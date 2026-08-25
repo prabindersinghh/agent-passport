@@ -1,12 +1,12 @@
 {
   "name": "agent-passport-bin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Agent Passport CLI binary wrapper",
   "license": "MIT",
   "bin": {
     "agent-passport": "./bin/agent-passport.js"
   },
   "dependencies": {
-    "@agent-passport/cli": "0.1.0"
+    "@agent-passport/cli": "0.2.0"
   }
 }

@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a bug in Agent Passport
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expect
+    attributes:
+      label: Expected behavior
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: 0.2.0

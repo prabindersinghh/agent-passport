@@ -1,6 +1,6 @@
 {
   "name": "@agent-passport/adapters",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tool adapters with policy enforcement for Agent Passport",
   "license": "MIT",
   "type": "module",
@@ -18,7 +18,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@agent-passport/core": "0.1.0"
+    "@agent-passport/core": "0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

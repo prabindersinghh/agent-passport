@@ -1,61 +1,32 @@
 # Changelog
 
-Session-dated log. Authoritative copy lives here (`docs/CHANGELOG.md`). See also root `CHANGELOG.md` for release summary.
+## 0.2.0 — 2026-08-26
+
+### Added
+- Path traversal / absolute path / null-byte normalization (`security.ts`); fail-closed in gateway
+- Protected-path write denial for `.agent`, `.env`, `.git`
+- Once-scoped approval consumption (no replay)
+- Memory store (local JSONL) — never grants authority
+- `@agent-passport/mcp-proxy` — real MCP stdio JSON-RPC interception
+- `@agent-passport/http` — HTTP Gateway (`/v1/authorize`, approvals, summaries)
+- GitHub adapter live mode via `GITHUB_TOKEN` (mock remains default)
+- Native Python policy engine (no CLI subprocess)
+- Runtime integration docs (Cursor / Claude Code / Codex)
+- Security tests (INV-10, INV-11, traversal, protected paths, approval consume)
+- GitHub issue/PR templates
+
+### Changed
+- Version bump to 0.2.0 across packages
+- Role switch loads target shell identity (permissions do not transfer)
+
+### Verified live
+- `npm run build` exit 0
+- `npm test` exit 0 (37 TS tests)
+- `pytest sdk/python/tests` exit 0 (14 tests)
+- Demo: merge APPROVAL_REQUIRED, deploy DENY
 
 ---
 
-## 2026-08-26 — Session: Working discipline adoption
+## 0.1.0 — 2026-08-26
 
-**Shipped (no git commits — repo not initialized):**
-
-- Created living documentation:
-  - `docs/ARCHITECTURE.md` — expanded with stack, topology, role matrix, invariants + test pins
-  - `docs/PROGRESS.md` — current state, live vs test verification, continuation note
-  - `docs/FIELD_REFERENCE.md` — all models and fields
-  - `docs/DECISIONS.md` — locked decisions
-  - `docs/PLAN_v0.1.md` — retroactive plan marked IMPLEMENTED
-  - `docs/CHANGELOG.md` — this file
-
-**Verified LIVE this session:**
-
-- `npm test` → exit 0 (17 TS tests + passWithNoTests workspaces)
-- `npm run build` → exit 0
-- `node packages/cli/dist/cli.js demo` in `examples/example-app` → exit 0; merge APPROVAL_REQUIRED; production.deploy DENY; summary + trace ID emitted
-
-**Verified ONLY IN TESTS:**
-
-- Organization deny precedence, MCP intercept, policy unit cases (see `docs/ARCHITECTURE.md` invariant table)
-
-**Pending:**
-
-- Git init + first commit (awaiting user)
-- Tests for INV-10, INV-11
-- v0.2 structural work requires PLAN + approval
-
----
-
-## 2026-08-26 — Session: Initial v0.1 build
-
-**Shipped:**
-
-- Full Agent Passport v0.1 monorepo (core, adapters, telemetry, CLI, TS/Python SDKs)
-- Example app + demo workflow
-- CI workflow definition
-- Root README, LICENSE, CONTRIBUTING, SECURITY
-
-**Verified LIVE (prior session):**
-
-- `init --yes`, `inspect`, `demo`, `check` commands
-- Python SDK tests: 3 passed
-
-**Known corners cut (disclosed):**
-
-- Simulated GitHub/deployment adapters
-- Python SDK subprocess delegation
-- CLI/telemetry/SDK packages use `--passWithNoTests`
-
----
-
-## Release 0.1.0 — 2026-08-26
-
-Initial release. See root `CHANGELOG.md` for feature list.
+Initial baseline: policy engine, gateway, CLI, adapters, SDKs, demo, living docs.

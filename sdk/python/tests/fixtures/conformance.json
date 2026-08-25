@@ -1,0 +1,58 @@
+[
+  {
+    "id": "deny-deploy-coder",
+    "action": "production.deploy",
+    "resource": "production/main",
+    "role": "coder",
+    "expected_effect": "deny"
+  },
+  {
+    "id": "approval-merge-coder",
+    "action": "github.merge_pr",
+    "resource": "repo/example/pr/1",
+    "role": "coder",
+    "expected_effect": "approval_required"
+  },
+  {
+    "id": "researcher-write-deny",
+    "action": "filesystem.write",
+    "resource": "./src/auth.ts",
+    "role": "researcher",
+    "expected_effect": "deny"
+  },
+  {
+    "id": "researcher-read-allow",
+    "action": "filesystem.read",
+    "resource": "./src/auth.ts",
+    "role": "researcher",
+    "expected_effect": "allow"
+  },
+  {
+    "id": "approval-merge-granted",
+    "action": "github.merge_pr",
+    "resource": "repo/example/pr/1",
+    "role": "coder",
+    "approvals": [
+      {
+        "request_id": "apr-conformance-1",
+        "agent_id": "coder",
+        "shell_id": "coder",
+        "action": "github.merge_pr",
+        "resource": "*",
+        "reason": "conformance",
+        "requested_scope": "once",
+        "status": "granted",
+        "created_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "expected_effect": "approved"
+  },
+  {
+    "id": "org-deny-overrides",
+    "action": "production.deploy",
+    "resource": "*",
+    "role": "deployer",
+    "org_deny_deploy": true,
+    "expected_effect": "deny"
+  }
+]

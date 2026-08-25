@@ -157,6 +157,20 @@ export class ApprovalManager {
     return rows.map((r) => this.rowToRequest(r));
   }
 
+  /**
+   * Consume a once-scoped approval after successful use so it cannot be replayed.
+   * Session/project/permanent grants remain until expiry.
+   */
+  consumeOnce(requestId: string): boolean {
+    const row = this.get(requestId);
+    if (!row || row.status !== 'granted') return false;
+    if (row.requested_scope !== 'once') return false;
+    this.db
+      .prepare(`UPDATE approvals SET status = 'expired', expires_at = ? WHERE request_id = ?`)
+      .run(new Date().toISOString(), requestId);
+    return true;
+  }
+
   private computeExpiry(scope: ApprovalScope, decidedAt: string): string | null {
     const base = new Date(decidedAt);
     switch (scope) {

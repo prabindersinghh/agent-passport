@@ -24,6 +24,12 @@ import {
   agentPassportPath,
   isAgentPassportInitialized,
 } from './paths.js';
+import {
+  isFilesystemAction,
+  normalizeFsResource,
+  isProtectedPath,
+  ResourceSecurityError,
+} from './security.js';
 
 export interface GatewayOptions {
   cwd?: string;
@@ -73,6 +79,16 @@ export class PassportGateway {
       throw new Error('Project not initialized. Run: agent-passport init');
     }
     const passport = loadPassport(agentPassportPath(agentId, this.cwd));
+    // Identity binding: passport id must match requested agentId (prevents spoof file swap tricks)
+    if (passport.metadata.id !== agentId) {
+      this.audit.emit('security.violation', {
+        agent_id: agentId,
+        action: 'identity.bind',
+        decision: 'deny',
+        metadata: { passportId: passport.metadata.id, reason: 'passport id mismatch' },
+      });
+      throw new Error(`Identity mismatch: passport id '${passport.metadata.id}' != agent '${agentId}'`);
+    }
     const projectPolicy = loadProjectPolicy(this.cwd);
     const projectConfig = loadProjectConfig(this.cwd);
     return {
@@ -82,10 +98,78 @@ export class PassportGateway {
     };
   }
 
+  private normalizeResource(action: string, resource: string): string {
+    if (!isFilesystemAction(action) && action !== 'filesystem.read' && action !== 'filesystem.write') {
+      return resource;
+    }
+    try {
+      return normalizeFsResource(resource);
+    } catch (err) {
+      if (err instanceof ResourceSecurityError) throw err;
+      throw err;
+    }
+  }
+
   authorize(input: AuthorizeInput): PolicyDecision {
     const { passport, projectPolicy, projectId } = this.loadContext(input.agentId);
     const traceId = input.traceId ?? uuidv4();
     const runId = input.runId;
+
+    let resource = input.resource;
+    try {
+      if (isFilesystemAction(input.action) || input.action.startsWith('filesystem.')) {
+        resource = this.normalizeResource(input.action, input.resource);
+        if (input.action === 'filesystem.write' && isProtectedPath(resource)) {
+          const denied: PolicyDecision = {
+            effect: 'deny',
+            reason: `Write to protected path denied: ${resource}`,
+            ruleIds: ['security:protected-path'],
+            policySource: 'security',
+            action: input.action,
+            resource,
+            agentId: input.agentId,
+          };
+          this.audit.emit('security.violation', {
+            run_id: runId,
+            agent_id: input.agentId,
+            shell_id: input.shellId,
+            project_id: projectId,
+            action: input.action,
+            resource,
+            decision: 'deny',
+            trace_id: traceId,
+            metadata: { reason: denied.reason },
+          });
+          return denied;
+        }
+      }
+    } catch (err) {
+      const reason =
+        err instanceof ResourceSecurityError
+          ? err.message
+          : 'Resource normalization failed — fail closed';
+      const denied: PolicyDecision = {
+        effect: 'deny',
+        reason,
+        ruleIds: ['security:normalize'],
+        policySource: 'security',
+        action: input.action,
+        resource: input.resource,
+        agentId: input.agentId,
+      };
+      this.audit.emit('security.violation', {
+        run_id: runId,
+        agent_id: input.agentId,
+        shell_id: input.shellId,
+        project_id: projectId,
+        action: input.action,
+        resource: input.resource,
+        decision: 'deny',
+        trace_id: traceId,
+        metadata: { reason },
+      });
+      return denied;
+    }
 
     const ctx: EvaluationContext = {
       passport,
@@ -93,10 +177,7 @@ export class PassportGateway {
       approvals: this.approvals.listGranted(input.agentId),
     };
 
-    const decision = evaluatePolicy(
-      { action: input.action, resource: input.resource },
-      ctx
-    );
+    const decision = evaluatePolicy({ action: input.action, resource }, ctx);
 
     this.audit.emit('policy.evaluated', {
       run_id: runId,
@@ -104,7 +185,7 @@ export class PassportGateway {
       shell_id: input.shellId,
       project_id: projectId,
       action: input.action,
-      resource: input.resource,
+      resource,
       decision: decisionToAuditDecision(decision.effect),
       trace_id: traceId,
       metadata: {
@@ -120,7 +201,7 @@ export class PassportGateway {
       shell_id: input.shellId,
       project_id: projectId,
       action: input.action,
-      resource: input.resource,
+      resource,
       trace_id: traceId,
     });
 
@@ -131,7 +212,7 @@ export class PassportGateway {
         shell_id: input.shellId,
         project_id: projectId,
         action: input.action,
-        resource: input.resource,
+        resource,
         decision: 'allow',
         trace_id: traceId,
       });
@@ -142,7 +223,7 @@ export class PassportGateway {
         shell_id: input.shellId,
         project_id: projectId,
         action: input.action,
-        resource: input.resource,
+        resource,
         decision: 'approval_required',
         trace_id: traceId,
       });
@@ -153,14 +234,14 @@ export class PassportGateway {
         shell_id: input.shellId,
         project_id: projectId,
         action: input.action,
-        resource: input.resource,
+        resource,
         decision: 'deny',
         trace_id: traceId,
         metadata: { reason: decision.reason },
       });
     }
 
-    return decision;
+    return { ...decision, resource };
   }
 
   async execute(
@@ -176,7 +257,7 @@ export class PassportGateway {
       projectId,
       shellId: input.shellId,
       action: input.action,
-      resource: input.resource,
+      resource: decision.resource ?? input.resource,
       parameters: input.parameters,
       traceId,
       runId: input.runId,
@@ -187,7 +268,7 @@ export class PassportGateway {
         agentId: input.agentId,
         shellId: input.shellId,
         action: input.action,
-        resource: input.resource,
+        resource: request.resource,
         reason: decision.reason,
         runId: input.runId,
         traceId,
@@ -209,7 +290,7 @@ export class PassportGateway {
       shell_id: input.shellId,
       project_id: projectId,
       action: input.action,
-      resource: input.resource,
+      resource: request.resource,
       trace_id: traceId,
     });
 
@@ -233,11 +314,15 @@ export class PassportGateway {
         shell_id: input.shellId,
         project_id: projectId,
         action: input.action,
-        resource: input.resource,
+        resource: request.resource,
         outcome: 'success',
         trace_id: traceId,
         metadata: { durationMs: outcome.durationMs, resultRef: outcome.resultRef },
       });
+      // Consume once-scoped approvals after successful use (no replay)
+      if (decision.effect === 'approved' && decision.approvalRequestId) {
+        this.approvals.consumeOnce(decision.approvalRequestId);
+      }
     } else {
       this.audit.emit('tool.failed', {
         run_id: input.runId,
@@ -245,7 +330,7 @@ export class PassportGateway {
         shell_id: input.shellId,
         project_id: projectId,
         action: input.action,
-        resource: input.resource,
+        resource: request.resource,
         outcome: 'failed',
         trace_id: traceId,
         metadata: { errorCode: outcome.errorCode },
@@ -263,10 +348,11 @@ export class PassportGateway {
     traceId?: string;
     reason?: string;
   }): void {
-    const { projectId } = this.loadContext(input.agentId);
+    // Role switch loads the TARGET identity — permissions do not transfer from fromShell
+    const { projectId } = this.loadContext(input.toShell);
     this.audit.emit('agent.role_switch', {
       run_id: input.runId,
-      agent_id: input.agentId,
+      agent_id: input.toShell,
       shell_id: input.toShell,
       project_id: projectId,
       trace_id: input.traceId ?? uuidv4(),
@@ -274,6 +360,7 @@ export class PassportGateway {
         from_shell: input.fromShell,
         to_shell: input.toShell,
         reason: input.reason,
+        previous_agent: input.agentId,
       },
     });
   }

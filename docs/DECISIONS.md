@@ -22,6 +22,12 @@ Locked decisions with date and one-line reason. Do not relitigate without explic
 | 2026-08-26 | No git repo initialized at build time | User did not request; commits N/A until init |
 | 2026-08-26 | Living docs live in `/docs` | Project Working Discipline rule 1 |
 | 2026-08-26 | Structural changes require PLAN + user approval | Project Working Discipline rule 3 |
+| 2026-08-26 | Release as v0.2.0 not v1.0 | Real MCP/HTTP/security land; dashboard/cloud not complete |
+| 2026-08-26 | MCP enforcement via stdio JSON-RPC proxy | Practical Cursor/Claude compatibility |
+| 2026-08-26 | GitHub mock default; live via env token | Safe CI; credentials never in repo |
+| 2026-08-26 | Native Python policy (no subprocess) | Proper SDK; conformance fixtures |
+| 2026-08-26 | Once-scoped approvals expire after use | Prevent approval replay |
+| 2026-08-26 | Publish under prabindersinghh/agent-passport | Matches authenticated gh account |
 
 ## Rejected / out of scope v0.1
 

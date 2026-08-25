@@ -1,6 +1,6 @@
 {
   "name": "agent-passport",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Open-source identity, authorization, policy-enforcement, and observability layer for AI agents",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "sdk/typescript"
   ],
   "scripts": {
-    "build": "npm run build -w @agent-passport/core && npm run build -w @agent-passport/telemetry && npm run build -w @agent-passport/adapters && npm run build -w @agent-passport/cli && npm run build -w agent-passport-sdk",
+    "build": "npm run build -w @agent-passport/core && npm run build -w @agent-passport/telemetry && npm run build -w @agent-passport/adapters && npm run build -w @agent-passport/cli && npm run build -w @agent-passport/mcp-proxy && npm run build -w @agent-passport/http && npm run build -w agent-passport-sdk",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "demo": "node packages/cli/dist/demo.js"

@@ -1,9 +1,12 @@
 {
-  "name": "@agent-passport/core",
+  "name": "@agent-passport/http",
   "version": "0.2.0",
-  "description": "Core domain models, policy engine, and schemas for Agent Passport",
+  "description": "HTTP Gateway API for Agent Passport policy enforcement",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "agent-passport-http": "./bin/agent-passport-http.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,18 +21,19 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0",
-    "glob": "^11.0.0",
-    "js-yaml": "^4.1.0",
-    "minimatch": "^10.0.1",
+    "@agent-passport/core": "0.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
     "uuid": "^11.0.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/js-yaml": "^4.0.9",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
+    "supertest": "^7.0.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
