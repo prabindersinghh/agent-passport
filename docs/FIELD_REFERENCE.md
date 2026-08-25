@@ -1,5 +1,7 @@
 # Field Reference
 
+Last updated: **2026-08-26** (v0.2.0)
+
 Plain-language reference for every persisted model and store. Internal field names match code (`packages/core/src/types.ts`).
 
 ---
@@ -11,7 +13,8 @@ Plain-language reference for every persisted model and store. Internal field nam
 | `.agent/project.yaml` | ProjectConfig | Project identity + discovery snapshot |
 | `.agent/policy.yaml` | ProjectPolicy | Rules governing all agents in this project |
 | `.agent/agents/<id>/passport.yaml` | AgentPassport | One agent shell identity |
-| `.agent/agents/<id>/memory/` | Directory | Future memory namespace (no engine v0.1) |
+| `.agent/agents/<id>/memory/entries.jsonl` | Memory log | Local agent memory (no authority) |
+| `.agent/mcp-proxy.json` | MCP config | Optional upstream MCP proxy settings |
 | `.agent/audit.jsonl` | Audit log | Append-only record of actions and decisions |
 | `.agent/approvals.db` | SQLite | Human approval requests and grants |
 | `.agent/runs/<run-id>/summary.json` | RunSummary | Machine-derived run report |

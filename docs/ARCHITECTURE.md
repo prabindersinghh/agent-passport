@@ -1,6 +1,12 @@
 # Architecture
 
-Agent Passport v0.1 — system as built on 2026-08-26.
+Agent Passport **v0.2.0** — system as built and released 2026-08-26.
+
+> **The agent requests. The Passport decides. The gateway enforces. OpenTelemetry records.**
+
+See also: [Field Reference](FIELD_REFERENCE.md) · [MCP](MCP.md) · [HTTP Gateway](HTTP_GATEWAY.md) · [Runtime Integration](RUNTIME_INTEGRATION.md)
+
+---
 
 ## Stack
 
@@ -15,55 +21,88 @@ Agent Passport v0.1 — system as built on 2026-08-26.
 | Audit log | Append-only JSONL (`.agent/audit.jsonl`) |
 | Observability | OpenTelemetry SDK (`@opentelemetry/*`) |
 | CLI | Commander |
-| Python SDK | Python ≥ 3.10, PyYAML |
+| Python SDK | Python ≥ 3.10, PyYAML — **native policy engine** (no CLI subprocess) |
 
-## Packages (services)
+---
+
+## Packages
 
 | Package | Path | Role |
 |---------|------|------|
-| `@agent-passport/core` | `packages/core` | Domain types, policy engine, gateway, audit, approval, discovery, summary |
-| `@agent-passport/adapters` | `packages/adapters` | Tool execution boundaries: FS, GitHub, MCP, tests, deployment |
+| `@agent-passport/core` | `packages/core` | Policy engine, gateway, audit, approval, discovery, summary, `security.ts`, memory |
+| `@agent-passport/adapters` | `packages/adapters` | FS, GitHub (mock + live), MCP adapter, tests, deploy |
+| `@agent-passport/mcp-proxy` | `packages/mcp-proxy` | Standalone stdio MCP JSON-RPC proxy |
+| `@agent-passport/http` | `packages/http` | HTTP Gateway API |
 | `@agent-passport/telemetry` | `packages/telemetry` | OTel span helpers |
 | `@agent-passport/cli` | `packages/cli` | Developer CLI |
 | `agent-passport-sdk` | `sdk/typescript` | TypeScript SDK |
 | `agent-passport` (PyPI name) | `sdk/python` | Python SDK |
 
-## Deployment topology (v0.1)
+---
 
-Local-first, no hosted service in v0.1:
+## Deployment topology (v0.2.0)
 
-```
+Local-first. No hosted SaaS. Three enforcement entry points:
+
+<div align="center">
+
+<pre>
 Developer machine
 ├── Project repo
-│   └── .agent/           ← version-controlled config (except runtime DB/logs)
+│   └── .agent/
 │       ├── project.yaml
 │       ├── policy.yaml
 │       ├── agents/*/passport.yaml
-│       ├── audit.jsonl   ← append-only, local
-│       ├── approvals.db  ← local SQLite
-│       └── runs/<id>/    ← summaries per run
-└── CLI / SDK invoke in-process gateway
-```
+│       ├── mcp-proxy.json      (optional MCP config)
+│       ├── audit.jsonl         (append-only, local)
+│       ├── approvals.db        (local SQLite)
+│       └── runs/&lt;id&gt;/         (summaries per run)
+│
+├── In-process: CLI / TS SDK / Python SDK → Gateway
+├── MCP: agent-passport-mcp (stdio proxy)
+└── HTTP: agent-passport-http (default :8787)
+</pre>
 
-Future (not built): HTTP Gateway (`POST /v1/authorize`), standalone MCP proxy process.
+</div>
 
-## Data model (summary)
+---
 
-See `FIELD_REFERENCE.md` for every field. Core entities:
+## Authorization flow
 
-- **AgentPassport** — portable agent identity + delegated permissions
-- **ProjectPolicy** — project-wide rules, default denies, approval requirements
-- **ProjectConfig** — discovery metadata
-- **PolicyRule** — allow | deny | approval on action + resource
-- **ApprovalRequest** — human approval lifecycle
-- **AuditEvent** — immutable action/policy record
-- **RunSummary** — aggregated metrics from audit events
-- **ToolRequest / PolicyDecision / ToolOutcome** — gateway contract
+<div align="center">
 
-## Role / permission matrix (baseline templates)
+<pre>
+Agent / runtime → ToolRequest
+              → PassportGateway.authorize()
+              → PolicyEngine.evaluatePolicy()
+              → AuditStore.emit()
+              → [ALLOW/APPROVED] → Adapter.execute() → audit outcome
+              → [APPROVAL_REQUIRED] → ApprovalManager → blocked
+              → [DENY] → blocked
+</pre>
+
+</div>
+
+Prompts are advisory. The gateway is the enforcement boundary.
+
+---
+
+## Policy model
 
 Effective authority = organization rules + project policy + passport permissions + active approvals.
-Precedence: **DENY > APPROVAL_REQUIRED > ALLOW**.
+
+| Precedence layer | Source |
+|------------------|--------|
+| Organization | `organization.rules` in policy |
+| Project | `rules` in `.agent/policy.yaml` |
+| Passport | `.agent/agents/&lt;id&gt;/passport.yaml` |
+| Session | Active approval grants |
+
+Decision precedence: **DENY > APPROVAL_REQUIRED > ALLOW**
+
+---
+
+## Role / permission matrix (baseline templates)
 
 | Action | Researcher | Coder | Reviewer | Deployer | Project default |
 |--------|------------|-------|----------|----------|-----------------|
@@ -80,25 +119,44 @@ Precedence: **DENY > APPROVAL_REQUIRED > ALLOW**.
 | `production.deploy` | 🚫 | 🚫 | 🚫 | 🔐* | **deny** |
 | `deployment.execute` | 🚫 | 🚫 | 🚫 | — | **deny** |
 
-\* Deployer passport says `deploy: approval`, but project rule `project:deny-production-deploy` (priority 1000) wins → **DENY**.
+\* Deployer passport may say `deploy: approval`, but project rule `project:deny-production-deploy` (priority 1000) wins → **DENY**.
 
-## Authorization flow
+---
 
-```
-Agent/runtime → ToolRequest
-             → PassportGateway.authorize()
-             → PolicyEngine.evaluatePolicy()
-             → AuditStore.emit()
-             → [ALLOW/APPROVED] → Adapter.execute() → audit outcome
-             → [APPROVAL_REQUIRED] → ApprovalManager.createRequest() → blocked
-             → [DENY] → blocked
-```
+## MCP enforcement
 
-Prompts are advisory. The gateway is the enforcement boundary.
+Two layers (both evaluate policy **before** forward):
 
-## MCP enforcement (adapter-level v0.1)
+1. **`McpGatewayAdapter`** — in-process intercept in adapters package
+2. **`@agent-passport/mcp-proxy`** — standalone stdio JSON-RPC proxy for Cursor/Claude MCP configs
 
-`McpGatewayAdapter.intercept()` evaluates policy **before** forwarding. No standalone MCP proxy server yet.
+Forbidden `tools/call` requests return JSON-RPC errors without reaching upstream.
+
+---
+
+## HTTP Gateway
+
+Express server exposing:
+
+- `POST /v1/authorize` — policy evaluation
+- `POST /v1/approvals/*` — human approval lifecycle
+- `GET /v1/runs/:id/summary` — machine-derived summary from audit events
+
+See [HTTP_GATEWAY.md](HTTP_GATEWAY.md).
+
+---
+
+## Security hardening (v0.2)
+
+`packages/core/src/security.ts`:
+
+- Path normalization and traversal blocking
+- Protected-path write denial (`.agent`, `.env`, `.git`)
+- Fail-closed on policy errors
+
+Approval grants with `requested_scope: once` are **consumed** after one use (no replay).
+
+---
 
 ## OpenTelemetry spans
 
@@ -109,6 +167,8 @@ Prompts are advisory. The gateway is the enforcement boundary.
 | `policy.check` | action, resource, decision, rule_ids |
 | `tool.call` | tool_name, adapter, action, resource |
 
+---
+
 ## Failure modes
 
 | Failure | Behavior |
@@ -117,28 +177,31 @@ Prompts are advisory. The gateway is the enforcement boundary.
 | Approval DB unavailable | Approval-required actions blocked |
 | Telemetry unavailable | Run continues; spans may be missing |
 | Passport / project missing | Gateway throws on load |
+| MCP proxy policy error | JSON-RPC `-32003`, no forward |
 
 ---
 
-## Invariants (must never break)
-
-Each invariant has a pinning test where noted. Gaps are listed in `PROGRESS.md`.
+## Invariants
 
 | ID | Invariant | Pinning test |
 |----|-----------|--------------|
-| INV-01 | Policy precedence: DENY beats APPROVAL beats ALLOW | `packages/core/src/policy-engine.test.ts` — org deny overrides allow |
-| INV-02 | Organization deny overrides project allow | `packages/core/src/integration.test.ts` — organization deny |
-| INV-03 | Production deploy denied by project default | `packages/core/src/policy-engine.test.ts` — coder production.deploy deny; `integration.test.ts` — deployer deny |
-| INV-04 | Merge PR requires human approval (no active grant) | `policy-engine.test.ts` — merge_pr approval_required; live: `cli demo` |
-| INV-05 | Researcher cannot write source | `integration.test.ts` — blocks researcher write |
-| INV-06 | Secrets paths denied (`.env`, `secrets/**`) | `policy-engine.test.ts` — denies secrets path |
-| INV-07 | Agent cannot self-approve (no approval record) | `policy-engine.test.ts` — privilege escalation; `integration.test.ts` — escalation attempt |
-| INV-08 | MCP adapter blocks denied/approval_required before forward | `packages/adapters/src/mcp.test.ts` |
-| INV-09 | Gateway evaluates policy before adapter execution | `integration.test.ts` — gateway authorize; live: `cli demo` |
-| INV-10 | Audit log is append-only (no update/delete API) | **Code inspection only** — `AuditStore.append()` uses `appendFileSync`; no delete method. No adversarial test yet. |
-| INV-11 | Memory never grants authority | **Not tested** — memory dirs exist; no memory→policy path in code |
-| INV-12 | Run summary metrics come from audit events, not LLM | Live: `cli demo` → `summary` JSON matches audit.jsonl counts |
-| INV-13 | High-risk actions default deny without explicit allow | `policy-engine.test.ts` — DEFAULT_DENIED_ACTIONS |
+| INV-01 | DENY beats APPROVAL beats ALLOW | `policy-engine.test.ts` |
+| INV-02 | Organization deny overrides project allow | `integration.test.ts` |
+| INV-03 | Production deploy denied by project default | `policy-engine.test.ts`, `integration.test.ts` |
+| INV-04 | Merge PR requires human approval | `policy-engine.test.ts`; live: `cli demo` |
+| INV-05 | Researcher cannot write source | `integration.test.ts` |
+| INV-06 | Secrets paths denied | `policy-engine.test.ts` |
+| INV-07 | Agent cannot self-approve | `policy-engine.test.ts`, `integration.test.ts` |
+| INV-08 | MCP adapter blocks before forward | `adapters/mcp.test.ts` |
+| INV-09 | Gateway evaluates before execute | `integration.test.ts`; live: `cli demo` |
+| INV-10 | Audit log append-only | `security.test.ts` |
+| INV-11 | Memory never grants authority | `security.test.ts` |
+| INV-12 | Run summary from audit events | live: `cli demo` → `summary` |
+| INV-13 | High-risk actions default deny | `policy-engine.test.ts` |
+
+Gaps and verification status: [PROGRESS.md](PROGRESS.md).
+
+---
 
 ## Core principle
 

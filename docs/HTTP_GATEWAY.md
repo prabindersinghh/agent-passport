@@ -1,9 +1,37 @@
 # HTTP Gateway
 
+Last updated: **2026-08-26** (v0.2.0)
+
+Language-agnostic policy enforcement over HTTP. See [Architecture](ARCHITECTURE.md).
+
+<div align="center">
+
+<pre>
+HTTP client / custom agent
+         │
+         ▼
+Agent Passport HTTP Gateway
+         │
+         ▼
+Policy Engine → ALLOW / DENY / APPROVAL
+         │
+         ▼
+Audit + optional summary
+</pre>
+
+</div>
+
+---
+
+## Run
+
 ```bash
-npx agent-passport-http --cwd .
+npm run build -w @agent-passport/http
+node packages/http/dist/cli.js --cwd .
 # default PORT=8787
 ```
+
+---
 
 ## Endpoints
 
@@ -16,6 +44,8 @@ npx agent-passport-http --cwd .
 | POST | `/v1/approvals/:id/deny` | Human deny |
 | GET | `/v1/approvals/:id` | Get approval |
 | GET | `/v1/runs/:id/summary` | Machine-derived summary |
+
+---
 
 ## Authorize example
 
@@ -38,3 +68,5 @@ Response shape:
   "trace_id": "..."
 }
 ```
+
+Summaries are derived from `.agent/audit.jsonl`, not LLM narrative.

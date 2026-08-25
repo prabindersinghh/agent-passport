@@ -1,31 +1,39 @@
 # Runtime Integration
 
+Last updated: **2026-08-26** (v0.2.0)
+
 Agent Passport enforces authority **outside** the LLM. Runtimes connect through the MCP proxy and/or HTTP gateway.
 
-## Architecture for coding agents
+<div align="center">
 
-```text
+<pre>
 Cursor / Claude Code / Codex / Custom
-              |
-              | MCP tools/call  (or HTTP /v1/authorize)
-              v
+              │
+              │ MCP tools/call  (or HTTP /v1/authorize)
+              ▼
      Agent Passport MCP Proxy  OR  HTTP Gateway
-              |
-              v
+              │
+              ▼
          Policy Engine
-              |
+              │
         ALLOW / DENY / APPROVAL
-              |
-              v
+              │
+              ▼
       Upstream MCP / Tools
-```
+</pre>
+
+</div>
+
+See also: [MCP.md](MCP.md) · [HTTP_GATEWAY.md](HTTP_GATEWAY.md)
+
+---
 
 ## Cursor
 
 1. Initialize Agent Passport in your project:
 
 ```bash
-npx agent-passport init --yes
+node /path/to/agent-passport/packages/cli/dist/cli.js init --yes
 ```
 
 2. Add MCP proxy config to Cursor (`.cursor/mcp.json` or Cursor Settings → MCP):
@@ -34,9 +42,9 @@ npx agent-passport init --yes
 {
   "mcpServers": {
     "agent-passport-fs": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "agent-passport-mcp",
+        "/path/to/agent-passport/packages/mcp-proxy/dist/cli.js",
         "--cwd",
         "${workspaceFolder}",
         "--agent",
@@ -54,19 +62,20 @@ npx agent-passport init --yes
 3. Verify enforcement:
 
 ```bash
-npx agent-passport check filesystem.write --agent researcher --resource ./src/x.ts
+node /path/to/agent-passport/packages/cli/dist/cli.js check filesystem.write --agent researcher --resource ./src/x.ts
 # expect DENY
 ```
 
-Point Cursor MCP tools through `agent-passport-mcp` so every `tools/call` is authorized first.
+Point Cursor MCP tools through the proxy so every `tools/call` is authorized first.
+
+---
 
 ## Claude Code
 
 Claude Code can use MCP servers similarly. Configure the MCP proxy as the tool server:
 
 ```bash
-# Example: wrap filesystem MCP
-npx agent-passport-mcp \
+node /path/to/agent-passport/packages/mcp-proxy/dist/cli.js \
   --cwd . \
   --agent coder \
   --upstream-command npx \
@@ -82,18 +91,22 @@ const d = p.authorize({ action: 'github.merge_pr', resource: 'repo/x/pr/1' });
 if (d.effect !== 'allow' && d.effect !== 'approved') throw new Error(d.reason);
 ```
 
+---
+
 ## Codex / custom agents
 
 1. Prefer **HTTP Gateway** for language-agnostic enforcement:
 
 ```bash
-npx agent-passport-http --cwd .
+node /path/to/agent-passport/packages/http/dist/cli.js --cwd .
 # POST http://127.0.0.1:8787/v1/authorize
 ```
 
 2. Or import the SDK and call `authorize()` before every tool invocation.
 
 3. Same Passport YAML works across runtimes — change the runtime, keep `.agent/`.
+
+---
 
 ## Verification checklist
 
@@ -104,6 +117,8 @@ npx agent-passport-http --cwd .
 | Merge PR | APPROVAL_REQUIRED until human grants |
 | Production deploy | DENY (project default) |
 | MCP tool without allow | DENY / blocked before upstream |
+
+---
 
 ## What is NOT claimed
 

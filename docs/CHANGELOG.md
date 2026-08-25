@@ -30,6 +30,13 @@
 - Fixed root `npm run demo` script (was pointing to missing `demo.js`)
 - GitHub repo description and topics updated
 
+### Docs sync (post-release)
+- README diagrams use GitHub-compatible `<div align="center"><pre>` centering
+- ARCHITECTURE.md updated from v0.1 draft to v0.2.0 (MCP proxy, HTTP gateway, security, invariants)
+- MCP.md, HTTP_GATEWAY.md, RUNTIME_INTEGRATION.md expanded with centered diagrams and accurate CLI paths
+- FIELD_REFERENCE.md, DECISIONS.md, CONTRIBUTING.md, examples/README.md updated
+- Added docs/README.md living-doc index
+
 ---
 
 ## 0.1.0 — 2026-08-26

@@ -37,9 +37,9 @@
 
 Agent Passport is open-source infrastructure that sits **between** an AI agent and the tools it uses. The LLM may plan. It must never be the security boundary. Every protected action is evaluated by the policy engine **before** execution.
 
-<p align="center">
+<div align="center">
 
-```text
+<pre>
 ┌─────────────────────────────────────┐
 │           AGENT PASSPORT             │
 │  Identity · Capabilities · Policy   │
@@ -58,9 +58,9 @@ Agent Passport is open-source infrastructure that sits **between** an AI agent a
                    │
                    ▼
             Audit + Run Summary
-```
+</pre>
 
-</p>
+</div>
 
 <br />
 
@@ -89,9 +89,9 @@ Agent Passport gives agents a **portable authority layer** — version-controlle
 
 ## Without vs with
 
-<p align="center">
+<div align="center">
 
-```text
+<pre>
 Without Agent Passport          With Agent Passport
 ──────────────────────          ───────────────────
 LLM                             LLM
@@ -105,9 +105,9 @@ Hope the prompt is obeyed       Policy Engine
                                 Tools
                                 ↓
                                 Audit + OpenTelemetry
-```
+</pre>
 
-</p>
+</div>
 
 <p align="center"><strong>The agent requests. The Passport decides. The gateway enforces. OpenTelemetry records.</strong></p>
 
@@ -149,7 +149,9 @@ node ../../packages/cli/dist/cli.js demo
 
 **Actual output from v0.2.0:**
 
-```text
+<div align="center">
+
+<pre>
 ✅ Read repository              ALLOW
 ✅ Modify source                ALLOW
 ✅ Run tests                    ALLOW
@@ -158,7 +160,9 @@ node ../../packages/cli/dist/cli.js demo
 ✅ Review approved              ALLOW
 🔐 Merge pull request           APPROVAL_REQUIRED
 🚫 Deploy production            DENY
-```
+</pre>
+
+</div>
 
 Agent Passport blocked autonomous production deployment because project policy denies `production.deploy`. Merge requires human approval — the agent cannot approve itself.
 
@@ -174,9 +178,9 @@ Agent Passport blocked autonomous production deployment because project policy d
 
 One LLM runtime can orchestrate **scoped identities** — not four separate models:
 
-<p align="center">
+<div align="center">
 
-```text
+<pre>
                     ONE LLM RUNTIME
                           │
                   Agent Passport
@@ -193,9 +197,9 @@ One LLM runtime can orchestrate **scoped identities** — not four separate mode
                           │
                           ▼
                Production (policy-gated)
-```
+</pre>
 
-</p>
+</div>
 
 <br />
 
@@ -252,13 +256,13 @@ Discovers Git, language, tests, MCP, CI/CD — proposes a **safe baseline**. Hum
 
 <br />
 
-<p align="center">
+<div align="center">
 
-```text
+<pre>
 Agent identity  +  Project policy  =  Effective authority
-```
+</pre>
 
-</p>
+</div>
 
 <br />
 
@@ -338,7 +342,9 @@ policyRef: .agent/policy.yaml
 
 Metrics come from **audit and tool events** — not from asking the LLM what it did.
 
-```text
+<div align="center">
+
+<pre>
 AGENT PASSPORT — RUN SUMMARY
 
 Run: run_7d63a855
@@ -356,7 +362,9 @@ TOTALS
   Denied actions: 1
 
 Trace: 9beb103aac4bb2ed1b60085914144946
-```
+</pre>
+
+</div>
 
 ```bash
 node packages/cli/dist/cli.js summary --run run_7d63a855
@@ -372,9 +380,9 @@ node packages/cli/dist/cli.js summary --run run_7d63a855
 
 **What this does**
 
-<p align="center">
+<div align="center">
 
-```text
+<pre>
 Coding Agent
      │
      ▼
@@ -385,9 +393,9 @@ Policy check (ALLOW / DENY / APPROVAL)
      │
      ▼
 Upstream MCP server → Tool
-```
+</pre>
 
-</p>
+</div>
 
 ```bash
 npm run build -w @agent-passport/mcp-proxy
@@ -483,15 +491,15 @@ Instrumented spans include `agent.run`, `agent.role_switch`, `policy.check`, and
 
 ## Security model
 
-<p align="center">
+<div align="center">
 
-```text
+<pre>
 LLM prompt  ≠  security boundary
 
 Policy → Gateway → Tool execution → Audit
-```
+</pre>
 
-</p>
+</div>
 
 <br />
 
@@ -513,7 +521,9 @@ Details: [SECURITY.md](SECURITY.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.
 
 ## Project structure
 
-```text
+<div align="center">
+
+<pre>
 packages/
   core/          Policy engine, gateway, audit, approvals, security
   adapters/      Filesystem, GitHub, MCP, tests, deploy
@@ -530,7 +540,9 @@ examples/
   example-app/   Four-shell demo workflow
 
 docs/            Architecture, MCP, HTTP, runtime integration
-```
+</pre>
+
+</div>
 
 <br />
 

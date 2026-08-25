@@ -27,6 +27,16 @@ npm test
 3. Ensure `npm test` passes
 4. Update documentation if CLI or schema changes
 
+## Living documentation
+
+Per Project Working Discipline, update `/docs` in the same session as code changes:
+
+- **Behavior change** → `ARCHITECTURE.md`, `FIELD_REFERENCE.md`, `CHANGELOG.md`
+- **Session completion** → `PROGRESS.md`
+- **Locked decision** → `DECISIONS.md`
+
+Index: [docs/README.md](docs/README.md)
+
 ## Testing Requirements
 
 - Unit tests for policy precedence and scoping

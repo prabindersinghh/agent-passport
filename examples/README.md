@@ -2,13 +2,19 @@
 
 Minimal TypeScript app used to demonstrate the four-shell workflow.
 
-## Run the demo
+## Quick path (from repository root)
 
 ```bash
-# From repository root
 npm install
 npm run build
+npm run demo
+```
 
+This runs `examples/example-app` init (if needed) and the full demo workflow.
+
+## Run the demo manually
+
+```bash
 cd examples/example-app
 
 # First-time setup
