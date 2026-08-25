@@ -1,0 +1,44 @@
+apiVersion: agentpassport.dev/v1
+kind: AgentPassport
+metadata:
+  id: coder
+  project: example-app
+  createdAt: '2026-08-25T19:34:19.513Z'
+  updatedAt: '2026-08-25T19:34:19.513Z'
+identity:
+  owner: developer
+  role: coder
+  name: Coder
+  description: Read/write source, run tests, create PR — no production deploy
+capabilities:
+  - repository.read
+  - filesystem.read
+  - filesystem.write
+  - tests.run
+  - github.read
+  - github.create_pr
+policyRef: .agent/policy.yaml
+permissions:
+  repository:
+    read: true
+  filesystem:
+    allow:
+      - ./src/**
+      - ./tests/**
+      - ./test/**
+      - ./lib/**
+      - ./app/**
+    deny:
+      - ./.env
+      - ./secrets/**
+  tests:
+    run: true
+  github:
+    read: true
+    create_pr: true
+    merge_pr: approval
+  production:
+    read: true
+    deploy: false
+  search:
+    execute: true

@@ -1,0 +1,38 @@
+apiVersion: agentpassport.dev/v1
+kind: AgentPassport
+metadata:
+  id: researcher
+  project: example-app
+  createdAt: '2026-08-25T19:34:19.484Z'
+  updatedAt: '2026-08-25T19:34:19.484Z'
+identity:
+  owner: developer
+  role: researcher
+  name: Researcher
+  description: Read repository, docs/search, inspect logs — no source writes
+capabilities:
+  - repository.read
+  - filesystem.read
+  - search.execute
+policyRef: .agent/policy.yaml
+permissions:
+  repository:
+    read: true
+  filesystem:
+    allow:
+      - ./**
+    deny:
+      - ./.env
+      - ./secrets/**
+      - ./.agent/**
+  search:
+    execute: true
+  github:
+    read: true
+    create_pr: false
+    merge_pr: false
+  production:
+    read: true
+    deploy: false
+  tests:
+    run: false

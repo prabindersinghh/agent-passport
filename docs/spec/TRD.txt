@@ -1,0 +1,234 @@
+Agent Passport — Technical Requirements Document
+TRD v0.1 | Reference architecture and implementation specification
+1. Technical Objective
+Build a runtime-independent policy and identity layer that can sit between an AI agent and the tools/resources it controls. The implementation must support agent-first and project-first provisioning, role-scoped agent shells, human approval gates, MCP integration, and OpenTelemetry-based tracing and run summaries.
+2. Architecture Overview
+                         +-------------------------+                         | AI Runtime / LLM Agent   |                         | Claude / Codex / Gemini  |                         +------------+------------+                                      | tool request                                      v                         +-------------------------+                         | Agent Passport Gateway   |                         | - identity resolver     |                         | - policy engine         |                         | - approval manager      |                         | - audit emitter         |                         +-----+------------+------+                               |            |                          ALLOW/EXEC     TRACE                               |            |                               v            v                  +----------------+   +--------------------+                  | Tool Adapters  |   | OpenTelemetry      |                  | MCP / FS / Git |   | Collector / Export |                  | HTTP / Cloud   |   +--------------------+                  +--------+-------+                           |                           v                    Project Resources
+3. Core Components
+Component
+Responsibility
+Passport Manifest
+Stores stable agent identity, declared role, capabilities, metadata and policy references.
+Project Policy
+Stores environment/project-wide rules and restrictions.
+Policy Engine
+Evaluates an action/resource request against agent authority, project policy and approval rules.
+Gateway
+Single decision point through which protected tool requests pass.
+Approval Manager
+Creates, presents, expires and records human approval decisions.
+Tool Adapters
+Enforce policy at MCP, filesystem, Git, HTTP/API, cloud and other execution boundaries.
+Agent Runtime Adapter
+Connects external coding-agent runtimes to the Passport protocol.
+Audit/Event Store
+Stores immutable action and policy decision events.
+OTel Emitter
+Produces traces/spans/metrics for runs, actions, policies, approvals and outcomes.
+Summary Engine
+Calculates end-of-run summaries from verified events and tool results.
+CLI
+Bootstrap, inspect, validate, request, approve, run and summarize.
+SDKs
+Python and TypeScript interfaces for runtimes and custom tools.
+4. Domain Model
+Agent  id  owner  role  runtime  passport_versionProject  id  repository  policy_versionCapability  action  resource_selectorPolicyRule  effect: allow | deny | approval  action  resource  conditions  priorityApprovalRequest  request_id  agent_id  action  resource  reason  requested_scope  expires_atActionEvent  run_id  agent_id  action  resource  decision  outcome  timestamp  trace_id
+5. Policy Evaluation Semantics
+The effective permission for an action must be the intersection of all applicable restrictions. A higher-order deny must override an allow. Approval is not equivalent to allow; it is a pending state until a valid human approval exists.
+Decision
+Meaning
+Execution
+ALLOW
+All applicable rules authorize the action
+Execute
+DENY
+A deny rule or missing required authority blocks the action
+Do not execute
+APPROVAL_REQUIRED
+Action is permitted only after explicit human approval
+Pause and request approval
+APPROVED
+A valid approval exists for the exact scope/time requested
+Execute
+EXPIRED
+Approval existed but is no longer valid
+Do not execute; request again
+Priority rule: DENY > APPROVAL_REQUIRED > ALLOW when the same scope conflicts, unless an explicit policy hierarchy says an even higher-level restriction applies.
+6. Policy Composition
+Organization Policy      +Project Policy      +Agent Passport      +Session constraints      =Effective Authority
+Organization policy may establish non-overridable denies.
+Project policy defines resource and workflow expectations for the repository/environment.
+Agent Passport defines identity, declared role and delegated authority.
+Session constraints may narrow scope temporarily.
+An agent cannot use a lower layer to override a higher-order deny.
+7. Agent-First Provisioning
+agent-passport agent init --name coder
+Generate stable agent ID.
+Generate key/material for local signing or runtime authentication where configured.
+Create passport.yaml with no implicit privileged capabilities.
+Register optional runtime adapter metadata.
+Return instructions to attach the agent to a project.
+Do not infer production access or other high-risk authority from agent creation alone.
+8. Project-First Provisioning
+agent-passport init
+Discover repository/project metadata.
+Detect likely tools and execution surfaces.
+Create project.yaml and policy.yaml.
+Create default shell templates if requested.
+Display a permission proposal with safe defaults.
+Require human approval before activating non-trivial authority.
+9. Discovery Engine
+Input
+Possible Signals
+Security Rule
+Git
+remote, branch, repo identity, history
+Never infer deploy authority from repository presence.
+Filesystem
+src, tests, secrets patterns, config
+Default to least privilege; secrets are denied unless explicitly granted.
+Package manifests
+Node/Python/Rust dependencies
+Use only to identify tooling, not to infer trust.
+MCP config
+available servers/tools
+Discovery does not equal permission; each tool must be policy-evaluated.
+CI/CD
+workflows, deploy commands
+Deployment capability is approval-gated or denied by default.
+Kubernetes/Terraform
+clusters, providers, infrastructure resources
+Treat infrastructure mutation as high risk.
+10. Four-Shell Architecture
+.agent/agents/  researcher/passport.yaml  coder/passport.yaml  reviewer/passport.yaml  deployer/passport.yaml
+Shells are identities plus policy scopes; prompts can describe behavior but do not provide authority.
+A single LLM may switch between shell identities through an orchestration controller.
+Role switch creates a new span and an explicit audit event.
+Each shell may have separate memory namespace and context budget.
+Cross-shell handoff should use signed or auditable artifacts rather than hidden conversational state where possible.
+11. Orchestration Model
+                Orchestrator                     |      +--------------+--------------+      |              |              | researcher       coder         reviewer      |              |              |      +--------------+--------------+                     |                  deployer                     |               human approval
+The orchestrator decides sequencing and delegation. The Passport gateway decides whether the current shell is authorized to perform each requested action. This separates intelligence/planning from authority/enforcement.
+12. MCP Enforcement
+MCP is the first high-value integration surface because agent tool calls are explicit and structured. Implement an MCP gateway/proxy that resolves the active agent identity and resource context, evaluates the requested tool/action, emits telemetry, and only then forwards the call.
+Agent  -> Passport MCP Gateway      -> identify agent + project + shell      -> evaluate policy      -> emit decision event      -> [approval if required]      -> forward tool call      -> capture result      -> emit outcome event
+13. Tool Adapter Contract
+interface ToolRequest {  agentId: string;  projectId: string;  shellId: string;  action: string;  resource: string;  parameters?: unknown;  traceId: string;}interface PolicyDecision {  effect: 'allow' | 'deny' | 'approval_required' | 'approved';  reason: string;  ruleIds: string[];  approvalRequestId?: string;}interface ToolOutcome {  success: boolean;  resultRef?: string;  errorCode?: string;}
+14. OpenTelemetry Design
+Use OpenTelemetry to correlate agent intent, policy decisions and real execution. Keep high-cardinality content such as file bodies, prompt text and secrets out of default spans. Use IDs and references instead.
+Span / Event
+Key Attributes
+agent.run
+run_id, agent_id, project_id, shell_id, runtime
+agent.role_switch
+from_shell, to_shell, reason
+policy.check
+action, resource, decision, rule_ids
+approval.request
+request_id, action, resource, scope, approver_state
+tool.call
+tool_name, adapter, action, resource
+tool.result
+success, error_code, duration_ms
+artifact.change
+path, operation, content_hash/reference
+summary.generated
+run_id, counts, outcome
+Security requirement: Never place raw credentials, API keys, full secrets or sensitive source content into telemetry attributes by default.
+15. End-of-Run Summary Engine
+The summary must be generated from verified execution events. The LLM may produce a narrative explanation, but the authoritative counts come from the event stream.
+RunSummary  run_id  duration  shells_used  actions_attempted  allowed  denied  approval_required  approvals_granted  approvals_denied  files_read  files_changed  tests_run  tests_passed  tests_failed  prs_created  merges  deployments  blocked_high_risk_actions  final_outcome  trace_id
+16. Example Run Summary
+AGENT PASSPORT RUN SUMMARYRun: 01J...researcher  Actions: 14  Allowed: 14  Denied: 0  Files read: 23coder  Actions: 28  Allowed: 24  Denied: 2  Approval requests: 2  Files changed: 8  Tests: 12 run / 11 passed / 1 failed  PR: #184 createdreviewer  Actions: 9  Allowed: 9  Review: approveddeployer  Actions: 3  Allowed: 1  Blocked: production.deploy  Approval: pendingFINAL  Status: COMPLETED_WITH_APPROVAL_PENDING  Trace: <trace-id>
+17. Memory Architecture
+Memory is portable but should not be treated as the authority boundary. Store memory by agent/shell namespace and project scope. Authorization decisions must always come from policy state, not from recalled conversational context.
+memory/  agents/    researcher/    coder/    reviewer/    deployer/  projects/    <project-id>/
+18. Storage Model
+Artifact
+v0.1 Recommendation
+Passport / policy
+YAML on disk, version controlled
+Approval state
+Local SQLite or embedded store; optionally signed
+Audit events
+Append-only local store with export capability
+OTel telemetry
+OTel SDK + configurable exporter
+Memory
+Local-first files/SQLite with pluggable vector index later
+19. Security Model
+Least privilege by default.
+Default deny for unknown or high-risk actions.
+No self-escalation by agents.
+Human approvals must be scoped, time-bound where appropriate, and auditable.
+Policy changes are versioned and attributable to an authority.
+Sensitive credentials remain in the underlying credential provider; Passport references authority rather than exposing secrets.
+Telemetry must redact secrets and minimize sensitive content.
+Tool adapters fail closed when policy evaluation is unavailable for protected actions.
+20. Failure Modes
+Failure
+Expected Behavior
+Policy engine unavailable
+Fail closed for protected actions; allow only explicitly designated safe-local reads if policy permits.
+Telemetry unavailable
+Do not block safe local development by default, but mark run as telemetry-degraded; protected actions may require stronger fail-closed policy.
+Approval service unavailable
+Approval-required actions remain blocked.
+Passport missing
+Agent cannot operate in governed mode.
+Policy malformed
+Refuse activation and show validation errors.
+Agent attempts privilege escalation
+Deny and emit security event.
+Runtime changes
+Identity remains stable; runtime metadata is updated and revalidated.
+21. APIs / SDKs
+Python SDK
+passport = Passport.load('.agent/agents/coder/passport.yaml')decision = passport.authorize(    action='github.merge_pr',    resource='repo/payment-api/pr/184')
+TypeScript SDK
+const decision = await passport.authorize({  action: 'filesystem.write',  resource: './src/auth.ts'});
+Gateway API
+POST /v1/authorizePOST /v1/approvalsGET  /v1/approvals/:idPOST /v1/eventsGET  /v1/runs/:id/summary
+22. Configuration Example
+apiVersion: agentpassport.dev/v1kind: AgentPassportmetadata:  id: coder  project: payment-apiidentity:  owner: human-or-org-idrole: codercapabilities:  - filesystem.read  - filesystem.write  - tests.run  - github.pull_request.createpolicyRef: .agent/policy.yaml# project policypermissions:  filesystem:    allow:      - ./src/**      - ./tests/**    deny:      - ./.env      - ./secrets/**  github:    read: true    create_pr: true    merge_pr: approval  production:    read: true    deploy: deny
+23. Implementation Phases
+Phase
+Engineering Deliverables
+Phase 0
+Schema, policy semantics, CLI skeleton, test fixtures
+Phase 1
+Passport store, project discovery, policy evaluator, allow/deny/approval decisions
+Phase 2
+Four shell templates, run controller, audit event model, basic summary engine
+Phase 3
+MCP proxy/gateway with full before/after tool-call enforcement
+Phase 4
+OpenTelemetry spans/metrics, trace correlation, exports
+Phase 5
+Python/TypeScript SDKs and runtime adapters
+Phase 6
+Memory layer and richer orchestration / handoffs
+Phase 7
+Dashboard and team/organization control plane
+24. Test Strategy
+Unit test policy evaluation, precedence, scoping and approval semantics.
+Golden-file tests for discovery-generated policies.
+Adapter tests for MCP, filesystem and Git operations.
+Adversarial tests where the agent attempts to exceed authority.
+Replay tests: reconstruct a run summary solely from recorded events.
+Cross-runtime tests: same Passport loaded by at least two agent adapters.
+Failure-injection tests: policy service, telemetry and approval service outages.
+Security tests for secret leakage in logs and telemetry.
+25. Acceptance Criteria for v0.1
+A developer can create an agent Passport without a project.
+A developer can initialize a project and receive a conservative policy proposal.
+A human can approve/edit permissions before activation.
+A four-shell configuration can be created and each shell has distinct authority.
+An unauthorized tool call is blocked before the underlying tool executes.
+A human approval can be requested and recorded for a protected action.
+A run summary can be generated without relying on LLM self-reporting.
+OpenTelemetry traces correlate run -> role -> policy check -> tool call -> outcome.
+An agent cannot elevate its own permission.
+The system remains usable when the underlying LLM or runtime changes.
+26. Key Architectural Principle
+Agent Passport is not an instruction file attached to a model. It is an enforcement and accountability layer. The LLM provides planning and reasoning; the Passport provides identity and authority; the gateway mediates execution; OpenTelemetry provides traceability; the summary engine reports verified work.

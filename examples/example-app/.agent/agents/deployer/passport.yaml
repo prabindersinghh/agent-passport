@@ -1,0 +1,35 @@
+apiVersion: agentpassport.dev/v1
+kind: AgentPassport
+metadata:
+  id: deployer
+  project: example-app
+  createdAt: '2026-08-25T19:34:19.590Z'
+  updatedAt: '2026-08-25T19:34:19.590Z'
+identity:
+  owner: developer
+  role: deployer
+  name: Deployer
+  description: Deployment operations — production deploy requires approval
+capabilities:
+  - repository.read
+  - filesystem.read
+  - production.read
+  - deployment.request
+  - deployment.execute
+policyRef: .agent/policy.yaml
+permissions:
+  repository:
+    read: true
+  filesystem:
+    allow:
+      - ./**
+    deny:
+      - ./.env
+      - ./secrets/**
+  production:
+    read: true
+    deploy: approval
+  github:
+    read: true
+    create_pr: false
+    merge_pr: approval

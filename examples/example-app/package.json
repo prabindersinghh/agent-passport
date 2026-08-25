@@ -1,0 +1,9 @@
+{
+  "name": "example-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Example app for Agent Passport demo workflow",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}

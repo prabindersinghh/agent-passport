@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Agent Passport runtime state (never commit)
+.agent/audit.jsonl
+.agent/approvals.db
+.agent/approvals.db-journal
+.agent/runs/
+.agent/telemetry/
+.agent/memory/
+**/.agent/audit.jsonl
+**/.agent/approvals.db
+**/.agent/approvals.db-journal
+**/.agent/runs/
+**/.agent/telemetry/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+!packages/**/build/
+
+# Coverage
+coverage/
+.nyc_output/
+htmlcov/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Binary docs
+*.docx

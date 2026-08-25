@@ -1,0 +1,29 @@
+{
+  "name": "@agent-passport/cli",
+  "version": "0.1.0",
+  "description": "Agent Passport CLI — identity, policy, and orchestration for AI agents",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agent-passport": "./bin/agent-passport.js"
+  },
+  "main": "./dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-passport/adapters": "0.1.0",
+    "@agent-passport/core": "0.1.0",
+    "@agent-passport/telemetry": "0.1.0",
+    "commander": "^12.1.0",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

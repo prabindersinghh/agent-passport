@@ -1,0 +1,197 @@
+Agent Passport — Product Requirements Document
+PRD v0.1 | Product definition for the open-source identity, authority, policy, approval and agent-orchestration layer
+1. Executive Summary
+Agent Passport is an open-source, runtime-independent layer that gives AI agents a portable identity and enforceable authority. It is designed to work whether an agent is created first and later connected to projects, or whether a developer starts a new project and then provisions one or more agents inside it.
+The core promise is: the model/runtime can change, while the agent identity, permissions, policies, approvals and audit history remain explicit and portable. The system must not rely on the LLM merely following a prompt. Sensitive actions are gated by a policy engine between the agent and the tool/resource being accessed.
+2. Product Vision
+AI agents are becoming capable of taking consequential actions. Agent Passport provides the missing control plane between intelligence and authority: a developer can define who an agent is, where it may operate, what it may do, which actions require human approval, and how all activity is observed and summarized.
+North Star: The model is replaceable. The authority is not.
+Core UX principle: One command to bootstrap a safe Passport; explicit human authority to approve or change permissions; technical enforcement for every protected action.
+3. Problem Statement
+Agent identity, tool permissions and approval rules are fragmented across individual runtimes, IDEs, MCP servers, APIs and cloud environments.
+An agent may carry useful context in one runtime and lose it when the underlying model or coding environment changes.
+Prompt instructions alone do not constitute reliable authorization. A capable agent can still attempt a tool call that should be denied.
+Teams increasingly need multiple constrained agent roles such as researcher, coder, reviewer and deployer rather than one over-privileged autonomous agent.
+There is limited developer visibility into what an agent actually did, which permissions were exercised, where it spent time, and which actions were blocked or human-approved.
+4. Product Goals
+Create a portable identity and authority artifact for an AI agent.
+Support both agent-first and project-first bootstrapping.
+Generate safe initial configuration automatically from discoverable project context, while requiring human review before granting meaningful authority.
+Enforce permissions outside the LLM through a policy engine and tool execution gates.
+Support multiple role-scoped agent shells under one orchestration runtime.
+Provide human approval gates for sensitive operations such as merge, deploy, delete and financial actions.
+Produce tamper-evident, machine-derived action traces and end-of-run summaries using OpenTelemetry-compatible telemetry.
+Provide a small, versionable specification and SDKs that can be integrated by multiple agent runtimes and tools.
+5. Non-Goals for v0.1
+Building a new foundation model or agent framework.
+Replacing cloud IAM, OAuth, SPIFFE or other established identity mechanisms.
+Creating a universal trust score in the first release.
+Building a large hosted dashboard before the enforcement engine is proven.
+Treating LLM prompts as the security boundary.
+6. Two Entry Paths
+6.1 Use Case A — Agent Already Exists
+A developer already uses Claude Code, Codex, Gemini, Cursor, a custom coding agent, or another runtime. They want to create a governed agent identity first and later attach it to one or more projects.
+agent-passport agent init --name coder# Creates an agent identity and local Passport.agent/agents/coder/passport.yaml
+Passport contains stable agent identity, declared role/capabilities, runtime metadata and policy references.
+No authority is granted merely because the Passport exists.
+A human or organization later attaches the agent to a project and grants project-scoped permissions.
+The same logical Passport can travel across supported agent runtimes.
+6.2 Use Case B — Starting a Project
+A developer starts a new repository or enters an existing project and wants a safe agent environment immediately.
+npx agent-passport init# Discovers project context and creates a safe baseline.agent/  project.yaml  policy.yaml  agents/    default/passport.yaml
+Inspect discoverable project context such as source directories, tests, package manifests, Git remotes, MCP configuration, CI/CD and infrastructure manifests.
+Generate a proposal with conservative defaults.
+Show the human exactly what will be allowed, denied and approval-gated.
+Only after approval does the policy become active.
+7. Core Product Concepts
+Concept
+Meaning
+Owner / Authority
+Agent Passport
+Portable identity + agent-level authority metadata
+Human / organization; created by CLI and approved by authority
+Project Policy
+Rules for agents operating in a project or environment
+Project owner / organization
+Permission
+Concrete allow/deny/approval rule over an action/resource
+Human / organization
+Capability
+Action category the agent may request
+Passport + project policy
+Approval Gate
+Human decision required for a protected action
+Human approver
+Agent Shell
+A role-scoped runtime identity such as researcher/coder/reviewer/deployer
+Passport configuration
+Audit Event
+Machine-generated event describing a real attempted/performed action
+Runtime / enforcement layer
+Run Summary
+End-of-run report derived from audit events, not just LLM claims
+Runtime + telemetry pipeline
+8. Multi-Agent Shells / Roles
+The product supports one or more agent shells under the same underlying LLM/runtime. A shell is a constrained identity, not merely a prompt persona.
+Shell
+Typical Permissions
+Typical Restrictions
+Researcher
+Read repository, docs/search, inspect logs
+No source writes; no merge; no deploy
+Coder
+Read/write source, run tests, create PR
+No production deploy; no merge unless approved
+Reviewer
+Read source, run tests, review/comment
+No source mutation; no merge/deploy
+Deployer
+Read build/release state, deploy when authorized
+Production deploy requires explicit policy and usually approval
+Required guarantee: A shell cannot grant itself additional authority. It may request permission, but only an authorized human/organization can approve the change.
+9. Primary User Flows
+9.1 Bootstrap Project
+Developer runs agent-passport init.
+CLI discovers project context.
+CLI generates a proposed project policy and default shell passports.
+Developer reviews permission matrix.
+Developer approves or edits policy.
+Policy is activated and versioned.
+Agent runtime connects through the Passport policy engine.
+All protected tool calls pass through gates.
+Run ends with machine-derived summaries for each shell.
+9.2 Add an Agent to an Existing Project
+Developer runs agent-passport agent init or agent-passport agent add.
+CLI creates Passport identity without assuming project permissions.
+Developer attaches the Passport to a project and assigns permissions.
+Policy engine composes agent authority with project restrictions.
+Agent can operate only within effective authority.
+9.3 Permission Escalation
+Agent requests a currently forbidden action.
+Policy engine returns DENY or HUMAN_APPROVAL_REQUIRED.
+System shows requested capability, resource, reason and policy source.
+Human approves once, for the session, for the project, or permanently depending on policy.
+Decision is recorded as an auditable event.
+Policy becomes effective only after the authority change is committed.
+10. Enforcement Model
+The enforcement boundary must not depend on the LLM respecting instructions. The LLM may receive the active Passport context to improve planning, but every protected action is independently evaluated by the policy engine before execution.
+LLM / Coding Agent      |      | tool request      vPassport Gateway / Policy Engine      |---- DENY --------------------> stop      |---- APPROVAL_REQUIRED -------> human decision      |---- ALLOW --------------------> execute tool                                          |                                          v                                    MCP / API / FS / Git / Cloud
+11. OpenTelemetry and Run Summaries
+OpenTelemetry is the observability substrate for the system. The enforcement layer emits structured spans/events for agent runs, role switches, tool requests, policy decisions, approvals and outcomes. Summaries are then calculated from telemetry and action records so an agent cannot inflate its own performance merely by claiming success.
+Summary Field
+Example
+Role / shell
+coder
+Run duration
+18m 42s
+Actions attempted
+47
+Actions allowed
+41
+Actions denied
+4
+Human approvals
+2
+Files changed
+8
+Tests executed
+12
+Tests passed / failed
+11 / 1
+PRs created
+1
+Deployments
+0
+Blocked high-risk actions
+production.deploy
+Outcome
+PR created; deployment pending human approval
+Design requirement: Every summary metric must be traceable to machine-generated events or verified tool results.
+12. CLI Surface
+agent-passport initagent-passport agent init --name <agent>agent-passport agent listagent-passport inspectagent-passport check <action> [--resource <resource>]agent-passport policy diffagent-passport policy approveagent-passport request <action>agent-passport run --as <shell>agent-passport summary [--run <id>]
+13. Example Repository Layout
+my-project/├── src/├── tests/├── package.json└── .agent/    ├── project.yaml    ├── policy.yaml    ├── agents/    │   ├── researcher/    │   │   ├── passport.yaml    │   │   └── memory/    │   ├── coder/    │   │   ├── passport.yaml    │   │   └── memory/    │   ├── reviewer/    │   │   ├── passport.yaml    │   │   └── memory/    │   └── deployer/    │       ├── passport.yaml    │       └── memory/    └── runs/        └── <run-id>/
+14. MVP Scope
+Release
+Scope
+v0.1
+Identity, policy format, permission engine, allow/deny/approval, CLI, Python SDK, TypeScript SDK, local audit events, four shell templates
+v0.2
+MCP gateway/adapter, tool-call enforcement, human approval workflow
+v0.3
+Portable local-first memory with role-scoped stores
+v0.4
+Adapters for major coding-agent environments and agent runtime hooks
+v0.5
+Visual dashboard for identity, permissions, approvals, traces and run summaries
+15. Success Metrics
+Time from blank repository to first governed agent run: under 5 minutes.
+A first-time developer can understand and approve the generated permission set without reading implementation code.
+100% of protected tool calls in supported adapters receive a policy decision before execution.
+Every completed run has a machine-derived summary and trace ID.
+The same Passport can be loaded by at least two different supported agent runtimes in the MVP.
+At least one real project demonstrates a blocked production action and a human-approved escalation.
+16. Risks and Mitigations
+Risk
+Mitigation
+Passport becomes a prompt file
+Make the gateway/policy engine the enforcement boundary; prompts are advisory only.
+Unsafe auto-discovery grants too much
+Generate conservative defaults; human approval is required before activation.
+Project context is incomplete
+Treat discovery as proposal, not truth; allow manual policy edits and explicit capability requests.
+One Passport becomes over-privileged
+Promote least-privilege multi-shell design.
+Observability reports claims rather than reality
+Generate summaries only from verified enforcement/tool events.
+Protocol tries to replace existing IAM
+Integrate with existing credentials/identity systems; Passport governs agent authority and policy composition.
+17. Product Principles
+Human authority is explicit.
+The agent never grants itself authority.
+Policy is portable and versionable.
+Enforcement happens outside the LLM.
+Least privilege is the default.
+Sensitive actions are approval-gated.
+Evidence beats self-reported completion.
+The core remains open-source and runtime-independent.

@@ -1,0 +1,15 @@
+apiVersion: agentpassport.dev/v1
+kind: Project
+metadata:
+  id: example-app
+  name: example-app
+  policy_version: '1'
+  discoveredAt: '2026-08-25T19:34:19.449Z'
+discovery:
+  signals:
+    - typescript
+    - npm project
+    - src/
+    - tests/ (tests)
+  language: typescript
+  packageManager: npm

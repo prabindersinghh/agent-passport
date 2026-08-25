@@ -1,0 +1,37 @@
+apiVersion: agentpassport.dev/v1
+kind: AgentPassport
+metadata:
+  id: reviewer
+  project: example-app
+  createdAt: '2026-08-25T19:34:19.515Z'
+  updatedAt: '2026-08-25T19:34:19.515Z'
+identity:
+  owner: developer
+  role: reviewer
+  name: Reviewer
+  description: Read source, run tests, review — no mutation or deploy
+capabilities:
+  - repository.read
+  - filesystem.read
+  - tests.run
+  - github.read
+  - review.comment
+policyRef: .agent/policy.yaml
+permissions:
+  repository:
+    read: true
+  filesystem:
+    allow:
+      - ./**
+    deny:
+      - ./.env
+      - ./secrets/**
+  tests:
+    run: true
+  github:
+    read: true
+    create_pr: false
+    merge_pr: approval
+  production:
+    read: true
+    deploy: false

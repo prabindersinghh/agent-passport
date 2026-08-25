@@ -1,0 +1,67 @@
+apiVersion: agentpassport.dev/v1
+kind: ProjectPolicy
+metadata:
+  id: example-app
+  version: '1'
+  name: example-app
+  activated: true
+  activatedAt: '2026-08-25T19:34:19.481Z'
+defaultDeny:
+  - production.deploy
+  - deployment.execute
+require_approval:
+  - github.merge_pr
+  - production.deploy
+rules:
+  - id: project:deny-production-deploy
+    effect: deny
+    action: production.deploy
+    resource: '*'
+    priority: 1000
+    source: project
+    reason: Production deployment denied by default
+  - id: project:approval-merge-pr
+    effect: approval
+    action: github.merge_pr
+    resource: '*'
+    priority: 500
+    source: project
+    reason: Merge requires human approval
+  - id: project:allow-fs-read
+    effect: allow
+    action: filesystem.read
+    resource: ./**
+    priority: 100
+    source: project
+  - id: project:allow-tests
+    effect: allow
+    action: tests.run
+    resource: '*'
+    priority: 100
+    source: project
+  - id: project:allow-create-pr
+    effect: allow
+    action: github.create_pr
+    resource: '*'
+    priority: 100
+    source: project
+  - id: project:allow-review
+    effect: allow
+    action: review.comment
+    resource: '*'
+    priority: 100
+    source: project
+  - id: project:deny-secrets
+    effect: deny
+    action: filesystem.*
+    resource: ./secrets/**
+    priority: 900
+    source: project
+    reason: Secrets directory is denied
+  - id: project:deny-env
+    effect: deny
+    action: filesystem.*
+    resource: ./.env
+    priority: 900
+    source: project
+    reason: .env file access denied
