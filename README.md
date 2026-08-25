@@ -342,9 +342,7 @@ policyRef: .agent/policy.yaml
 
 Metrics come from **audit and tool events** — not from asking the LLM what it did.
 
-<div align="center">
-
-<pre>
+```text
 AGENT PASSPORT — RUN SUMMARY
 
 Run: run_7d63a855
@@ -362,9 +360,7 @@ TOTALS
   Denied actions: 1
 
 Trace: 9beb103aac4bb2ed1b60085914144946
-</pre>
-
-</div>
+```
 
 ```bash
 node packages/cli/dist/cli.js summary --run run_7d63a855
@@ -521,9 +517,7 @@ Details: [SECURITY.md](SECURITY.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.
 
 ## Project structure
 
-<div align="center">
-
-<pre>
+```text
 packages/
   core/          Policy engine, gateway, audit, approvals, security
   adapters/      Filesystem, GitHub, MCP, tests, deploy
@@ -540,9 +534,7 @@ examples/
   example-app/   Four-shell demo workflow
 
 docs/            Architecture, MCP, HTTP, runtime integration
-</pre>
-
-</div>
+```
 
 <br />
 
