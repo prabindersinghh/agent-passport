@@ -1,15 +1,16 @@
 # Progress
 
-Last updated: **2026-08-26** (session: v0.2 completion & release)
+Last updated: **2026-08-26** (session: final QA, README polish, v0.2.0 release verification)
 
 ---
 
 ## Current state
 
-**v0.2.0** — MCP proxy, HTTP gateway, security hardening, native Python policy, runtime docs. Git initialized; release push pending/completed this session.
+**v0.2.0** — MCP proxy, HTTP gateway, security hardening, native Python policy, runtime docs. Published on GitHub with release tag `v0.2.0`.
 
 Baseline commit: `b1f27a2`  
-Release: `v0.2.0`
+Release tag: `v0.2.0`
+Repository: https://github.com/prabindersinghh/agent-passport
 
 ---
 
@@ -67,3 +68,15 @@ Release: `v0.2.0`
 1. npm publish packages
 2. Optional: OTLP exporter config examples
 3. Optional: richer orchestrator controller package
+
+---
+
+## Final QA (2026-08-26)
+
+| Check | Result |
+|-------|--------|
+| README landing page + logo | ✅ |
+| `package.json` demo script fix | ✅ |
+| Full test suite re-run | ✅ build exit 0, npm test 37 TS, pytest 14 |
+| `npm run demo` from repo root | ✅ (runs example-app) |
+| GitHub topics/description | pending this session |

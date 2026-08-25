@@ -12,7 +12,7 @@
     "build": "npm run build -w @agent-passport/core && npm run build -w @agent-passport/telemetry && npm run build -w @agent-passport/adapters && npm run build -w @agent-passport/cli && npm run build -w @agent-passport/mcp-proxy && npm run build -w @agent-passport/http && npm run build -w agent-passport-sdk",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "demo": "node packages/cli/dist/demo.js"
+    "demo": "cd examples/example-app && node ../../packages/cli/dist/cli.js init --yes && node ../../packages/cli/dist/cli.js demo"
   },
   "engines": {
     "node": ">=18.0.0"

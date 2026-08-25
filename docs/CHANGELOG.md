@@ -25,6 +25,11 @@
 - `pytest sdk/python/tests` exit 0 (14 tests)
 - Demo: merge APPROVAL_REQUIRED, deploy DENY
 
+### Final QA polish
+- README landing page with logo, architecture diagrams, real demo output
+- Fixed root `npm run demo` script (was pointing to missing `demo.js`)
+- GitHub repo description and topics updated
+
 ---
 
 ## 0.1.0 — 2026-08-26
